@@ -1,0 +1,282 @@
+// Schema CSDL – website đặt vé xe khách liên tỉnh.
+// Quy ước: tên model/field camelCase trong code, tên bảng/cột snake_case trong PostgreSQL (@map / @@map).
+// Mọi thay đổi bảng phải đi kèm migration: npx prisma migrate dev --name <ten-thay-doi>
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+enum StopType {
+  PICKUP
+  DROPOFF
+  BOTH
+}
+
+enum TripStatus {
+  SCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+// Trạng thái "đang giữ" KHÔNG lưu ở đây mà nằm trong Redis có thời hạn (TTL).
+enum TripSeatStatus {
+  AVAILABLE
+  SOLD
+  BLOCKED
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+  EXPIRED
+  PAYMENT_FAILED
+  NEEDS_REFUND // đã trả tiền nhưng ghế không còn (xem khó khăn #13 trong kế hoạch)
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  fullName     String        @map("full_name")
+  email        String        @unique
+  phone        String
+  passwordHash String        @map("password_hash")
+  role         Role          @default(CUSTOMER)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  bookings     Booking[]
+  chatSessions ChatSession[]
+
+  @@map("users")
+}
+
+// Để sẵn bảng nhà xe để sau này mở rộng thành sàn nhiều nhà xe.
+model Operator {
+  id        Int      @id @default(autoincrement())
+  name      String
+  hotline   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  routes    Route[]
+  buses     Bus[]
+
+  @@map("operators")
+}
+
+model Route {
+  id              Int      @id @default(autoincrement())
+  operatorId      Int      @map("operator_id")
+  originCity      String   @map("origin_city")
+  destinationCity String   @map("destination_city")
+  distanceKm      Int?     @map("distance_km")
+  durationMinutes Int?     @map("duration_minutes")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  operator        Operator @relation(fields: [operatorId], references: [id])
+  stops           Stop[]
+  trips           Trip[]
+
+  @@index([originCity, destinationCity])
+  @@map("routes")
+}
+
+model Stop {
+  id              Int       @id @default(autoincrement())
+  routeId         Int       @map("route_id")
+  name            String
+  address         String
+  type            StopType
+  orderNo         Int       @map("order_no")
+  // số phút so với giờ xuất bến (điểm đón sau 30 phút → 30)
+  offsetMinutes   Int       @default(0) @map("offset_minutes")
+  route           Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  pickupBookings  Booking[] @relation("PickupStop")
+  dropoffBookings Booking[] @relation("DropoffStop")
+
+  @@unique([routeId, orderNo])
+  @@map("stops")
+}
+
+model SeatLayout {
+  id     Int    @id @default(autoincrement())
+  name   String
+  floors Int
+  rows   Int
+  cols   Int
+  seats  Seat[]
+  buses  Bus[]
+
+  @@map("seat_layouts")
+}
+
+model Seat {
+  id        Int        @id @default(autoincrement())
+  layoutId  Int        @map("layout_id")
+  code      String // ví dụ A01 (tầng dưới), B01 (tầng trên)
+  floor     Int
+  rowNo     Int        @map("row_no")
+  colNo     Int        @map("col_no")
+  layout    SeatLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  tripSeats TripSeat[]
+
+  @@unique([layoutId, code])
+  @@map("seats")
+}
+
+model Bus {
+  id           Int        @id @default(autoincrement())
+  operatorId   Int        @map("operator_id")
+  plateNumber  String     @unique @map("plate_number")
+  busType      String     @map("bus_type")
+  seatLayoutId Int        @map("seat_layout_id")
+  operator     Operator   @relation(fields: [operatorId], references: [id])
+  layout       SeatLayout @relation(fields: [seatLayoutId], references: [id])
+  trips        Trip[]
+
+  @@map("buses")
+}
+
+model Trip {
+  id        Int        @id @default(autoincrement())
+  routeId   Int        @map("route_id")
+  busId     Int        @map("bus_id")
+  departAt  DateTime   @map("depart_at") // lưu UTC, hiển thị giờ Việt Nam
+  arriveAt  DateTime   @map("arrive_at")
+  basePrice Int        @map("base_price") // VNĐ
+  status    TripStatus @default(SCHEDULED)
+  createdAt DateTime   @default(now()) @map("created_at")
+  route     Route      @relation(fields: [routeId], references: [id])
+  bus       Bus        @relation(fields: [busId], references: [id])
+  tripSeats TripSeat[]
+  bookings  Booking[]
+
+  @@index([routeId, departAt])
+  @@map("trips")
+}
+
+// Mỗi ghế của mỗi chuyến là 1 dòng. UNIQUE(trip_id, seat_id) + cập nhật có điều kiện
+// (status = AVAILABLE) là lớp chặn cuối cùng chống bán trùng ghế.
+model TripSeat {
+  id        Int            @id @default(autoincrement())
+  tripId    Int            @map("trip_id")
+  seatId    Int            @map("seat_id")
+  status    TripSeatStatus @default(AVAILABLE)
+  bookingId Int?           @map("booking_id")
+  trip      Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  seat      Seat           @relation(fields: [seatId], references: [id])
+  booking   Booking?       @relation(fields: [bookingId], references: [id])
+  items     BookingItem[]
+
+  @@unique([tripId, seatId])
+  @@index([bookingId])
+  @@map("trip_seats")
+}
+
+model Booking {
+  id            Int           @id @default(autoincrement())
+  code          String        @unique // mã vé ngẫu nhiên, không dùng id tăng dần
+  userId        Int?          @map("user_id")
+  tripId        Int           @map("trip_id")
+  pickupStopId  Int           @map("pickup_stop_id")
+  dropoffStopId Int           @map("dropoff_stop_id")
+  contactName   String        @map("contact_name")
+  contactPhone  String        @map("contact_phone")
+  contactEmail  String        @map("contact_email")
+  totalAmount   Int           @map("total_amount")
+  status        BookingStatus @default(PENDING_PAYMENT)
+  expiresAt     DateTime      @map("expires_at")
+  cancelledAt   DateTime?     @map("cancelled_at")
+  refundAmount  Int?          @map("refund_amount")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  user          User?         @relation(fields: [userId], references: [id])
+  trip          Trip          @relation(fields: [tripId], references: [id])
+  pickupStop    Stop          @relation("PickupStop", fields: [pickupStopId], references: [id])
+  dropoffStop   Stop          @relation("DropoffStop", fields: [dropoffStopId], references: [id])
+  items         BookingItem[]
+  payments      Payment[]
+  tripSeats     TripSeat[]
+
+  @@index([userId])
+  @@index([contactPhone])
+  @@index([status, expiresAt])
+  @@map("bookings")
+}
+
+model BookingItem {
+  id            Int      @id @default(autoincrement())
+  bookingId     Int      @map("booking_id")
+  tripSeatId    Int      @map("trip_seat_id")
+  passengerName String?  @map("passenger_name")
+  price         Int
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tripSeat      TripSeat @relation(fields: [tripSeatId], references: [id])
+
+  @@unique([bookingId, tripSeatId])
+  @@map("booking_items")
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  bookingId Int           @map("booking_id")
+  provider  String
+  txnRef    String        @unique @map("txn_ref")
+  amount    Int
+  status    PaymentStatus @default(PENDING)
+  rawData   Json?         @map("raw_data")
+  paidAt    DateTime?     @map("paid_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@map("payments")
+}
+
+// ----- Chatbot (TV3 phụ trách) -----
+
+model KbDocument {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("kb_documents")
+}
+
+model ChatSession {
+  id        String        @id @default(uuid())
+  userId    Int?          @map("user_id")
+  startedAt DateTime      @default(now()) @map("started_at")
+  user      User?         @relation(fields: [userId], references: [id])
+  messages  ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        Int         @id @default(autoincrement())
+  sessionId String      @map("session_id")
+  role      String // user | assistant | tool
+  content   String      @db.Text
+  createdAt DateTime    @default(now()) @map("created_at")
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}

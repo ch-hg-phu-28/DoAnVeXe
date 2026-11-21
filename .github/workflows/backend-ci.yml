@@ -1,0 +1,49 @@
+# Chạy tự động cho mọi Pull Request vào develop/main có sửa thư mục backend.
+# Bật "Require status checks to pass" trong Branch protection để PR lỗi không gộp được.
+name: backend-ci
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
+  push:
+    branches: [develop, main]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: datve
+          POSTGRES_PASSWORD: datve
+          POSTGRES_DB: datve
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U datve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://datve:datve@localhost:5432/datve?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Kiểm tra schema Prisma
+        run: npx prisma validate
+      - name: Chạy migration trên database trống
+        run: npx prisma migrate deploy
+      - name: Báo lỗi nếu sửa schema.prisma mà quên tạo migration
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - run: npm run build
+      - run: npm test

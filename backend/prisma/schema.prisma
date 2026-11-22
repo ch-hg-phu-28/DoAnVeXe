@@ -59,6 +59,8 @@ model User {
   phone        String
   passwordHash String        @map("password_hash")
   role         Role          @default(CUSTOMER)
+  /// F29: quản trị viên khóa tài khoản, tài khoản bị khóa không đăng nhập được
+  isLocked     Boolean       @default(false) @map("is_locked")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   bookings     Booking[]

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { adminUsersApi } from '../api/adminUsers';
-import type { AdminUserItem, Role } from '../types/user';
+import { Avatar, SearchIcon } from '../components/ui';
+import { ROLE_LABEL, type AdminUserItem, type Role } from '../types/user';
 
 interface AdminUsersPageProps {
   currentUserId: number;
@@ -68,97 +69,128 @@ export function AdminUsersPage({ currentUserId }: AdminUsersPageProps) {
   }
 
   return (
-    <div style={{ padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
-      <h3>Quản lý người dùng & phân quyền (F29)</h3>
-
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Tìm theo email, họ tên hoặc SĐT..."
-          style={{ flex: 1, padding: 8 }}
-        />
-        <button type="submit" disabled={loading} style={{ padding: '8px 14px' }}>
-          Tìm kiếm
-        </button>
-        {query && (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery('');
-              void loadUsers('');
-            }}
-            style={{ padding: '8px 14px' }}
-          >
-            Xóa lọc
-          </button>
-        )}
-      </form>
-
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {loading && <p>Đang tải danh sách...</p>}
-
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #ccc', textAlign: 'left' }}>
-              <th style={{ padding: 8 }}>ID</th>
-              <th style={{ padding: 8 }}>Họ tên</th>
-              <th style={{ padding: 8 }}>Email</th>
-              <th style={{ padding: 8 }}>SĐT</th>
-              <th style={{ padding: 8 }}>Số vé</th>
-              <th style={{ padding: 8 }}>Vai trò</th>
-              <th style={{ padding: 8 }}>Trạng thái</th>
-              <th style={{ padding: 8 }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => {
-              const isSelf = u.id === currentUserId;
-              const busy = updatingId === u.id;
-              return (
-                <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: 8 }}>{u.id}</td>
-                  <td style={{ padding: 8 }}>{u.fullName}</td>
-                  <td style={{ padding: 8 }}>{u.email}</td>
-                  <td style={{ padding: 8 }}>{u.phone}</td>
-                  <td style={{ padding: 8 }}>{u._count.bookings}</td>
-                  <td style={{ padding: 8 }}>
-                    <select
-                      value={u.role}
-                      disabled={isSelf || busy}
-                      onChange={(e) => void handleRoleChange(u.id, e.target.value as Role)}
-                      style={{ padding: 6 }}
-                    >
-                      {ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td style={{ padding: 8 }}>{u.isLocked ? 'Đã khóa' : 'Hoạt động'}</td>
-                  <td style={{ padding: 8 }}>
-                    {isSelf ? (
-                      <span>Tài khoản hiện tại</span>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void handleToggleLock(u)}
-                        style={{ padding: '6px 10px' }}
-                      >
-                        {u.isLocked ? 'Mở khóa' : 'Khóa'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <>
+      <div className="page-head">
+        <h1>Quản lý người dùng</h1>
+        <p>Tìm tài khoản, đổi vai trò hoặc khóa khi cần.</p>
       </div>
-    </div>
+
+      <div className="panel">
+        <form className="toolbar" onSubmit={handleSearch} role="search">
+          <label className="search">
+            <span className="sr-only">Tìm người dùng</span>
+            <SearchIcon />
+            <input
+              className="input"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm theo email, họ tên hoặc số điện thoại"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            Tìm kiếm
+          </button>
+          {query && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setQuery('');
+                void loadUsers('');
+              }}
+            >
+              Xóa lọc
+            </button>
+          )}
+          <span className="count" aria-live="polite">
+            {loading ? 'Đang tải…' : `${users.length} người dùng`}
+          </span>
+        </form>
+
+        {error && (
+          <div className="panel-pad">
+            <p className="alert alert-error" role="alert">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {!loading && users.length === 0 && !error ? (
+          <p className="empty">Không có người dùng nào khớp. Thử email, họ tên hoặc số điện thoại khác.</p>
+        ) : (
+          <div className="table-wrap" aria-busy={loading}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Người dùng</th>
+                  <th>SĐT</th>
+                  <th>Số vé</th>
+                  <th>Vai trò</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => {
+                  const isSelf = u.id === currentUserId;
+                  const busy = updatingId === u.id;
+                  return (
+                    <tr key={u.id}>
+                      <td>
+                        <div className="cell-user">
+                          <Avatar name={u.fullName} size="sm" />
+                          <div>
+                            <b>{u.fullName}</b>
+                            <span>{u.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="num">{u.phone}</td>
+                      <td className="num">{u._count.bookings}</td>
+                      <td>
+                        <select
+                          className="select"
+                          aria-label={`Vai trò của ${u.fullName}`}
+                          value={u.role}
+                          disabled={isSelf || busy}
+                          onChange={(e) => void handleRoleChange(u.id, e.target.value as Role)}
+                        >
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {ROLE_LABEL[r]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <span className={`badge ${u.isLocked ? 'badge-off' : 'badge-ok'}`}>
+                          <span className="dot" />
+                          {u.isLocked ? 'Đã khóa' : 'Hoạt động'}
+                        </span>
+                      </td>
+                      <td>
+                        {isSelf ? (
+                          <span className="muted">Tài khoản của bạn</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${u.isLocked ? 'btn-ghost' : 'btn-danger'}`}
+                            disabled={busy}
+                            onClick={() => void handleToggleLock(u)}
+                          >
+                            {u.isLocked ? 'Mở khóa' : 'Khóa'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

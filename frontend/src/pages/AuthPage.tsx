@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { authApi, TOKEN_STORAGE_KEY } from '../api/auth';
+import { EyeIcon, LogoMark } from '../components/ui';
 import type { UserProfile } from '../types/user';
 
 interface AuthPageProps {
@@ -12,6 +13,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
   const [email, setEmail] = useState('khach@example.com');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('Matkhau@123');
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,83 +44,181 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
     setError(null);
   }
 
+  const isLogin = mode === 'login';
+
   return (
-    <div style={{ maxWidth: 440, margin: '24px auto', padding: 20, border: '1px solid #ddd', borderRadius: 8 }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button type="button" onClick={() => { setMode('login'); setError(null); }}>
-          Đăng nhập
-        </button>
-        <button type="button" onClick={() => { setMode('register'); setError(null); }}>
-          Đăng ký
-        </button>
-      </div>
-
-      {mode === 'login' && (
-        <div style={{ marginBottom: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={() => fillSample('khach@example.com')}>
-            Dùng tài khoản Khách
-          </button>
-          <button type="button" onClick={() => fillSample('admin@example.com')}>
-            Dùng tài khoản Admin
-          </button>
+    <div className="auth">
+      <aside className="auth-side">
+        <div className="brand">
+          <LogoMark />
+          Đặt vé xe
         </div>
-      )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {mode === 'register' && (
-          <>
-            <label>
-              Họ tên (2–100 ký tự)
+        <div className="auth-pitch">
+          <h1>Chọn ghế, giữ chỗ, đi ngay.</h1>
+          <p>Tìm chuyến xe khách, giữ ghế trong vài phút và nhận vé điện tử qua email.</p>
+
+          <div className="ticket" aria-hidden="true">
+            <div className="ticket-main">
+              <div className="ticket-route">
+                <span>TP. Hồ Chí Minh</span>
+                <span>→</span>
+                <span>Đà Lạt</span>
+              </div>
+              <div className="ticket-meta">
+                <span>
+                  Khởi hành<b>22:30</b>
+                </span>
+                <span>
+                  Ngày<b>22/11</b>
+                </span>
+                <span>
+                  Loại xe<b>Giường nằm</b>
+                </span>
+              </div>
+            </div>
+            <div className="ticket-stub">
+              <div>
+                Ghế<b>A12</b>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="road" aria-hidden="true" />
+      </aside>
+
+      <main className="auth-main">
+        <div className="auth-card">
+          <div>
+            <h2>{isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}</h2>
+            <p className="sub">
+              {isLogin ? 'Đăng nhập để xem và quản lý vé của bạn.' : 'Chỉ mất một phút để bắt đầu đặt vé.'}
+            </p>
+          </div>
+
+          <div className="seg" role="tablist" aria-label="Chế độ">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isLogin}
+              onClick={() => {
+                setMode('login');
+                setError(null);
+              }}
+            >
+              Đăng nhập
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isLogin}
+              onClick={() => {
+                setMode('register');
+                setError(null);
+              }}
+            >
+              Đăng ký
+            </button>
+          </div>
+
+          {isLogin && (
+            <div className="chips">
+              <span>Dùng thử:</span>
+              <button type="button" className="chip" onClick={() => fillSample('khach@example.com')}>
+                Khách hàng
+              </button>
+              <button type="button" className="chip" onClick={() => fillSample('admin@example.com')}>
+                Quản trị viên
+              </button>
+            </div>
+          )}
+
+          <form className="form" onSubmit={handleSubmit}>
+            {!isLogin && (
+              <>
+                <div className="field">
+                  <label htmlFor="fullName">
+                    Họ tên<small>2–100 ký tự</small>
+                  </label>
+                  <input
+                    id="fullName"
+                    className="input"
+                    type="text"
+                    autoComplete="name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="phone">
+                    Số điện thoại<small>10 số, bắt đầu bằng 0</small>
+                  </label>
+                  <input
+                    id="phone"
+                    className="input"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="0912345678"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="field">
+              <label htmlFor="email">Email</label>
               <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                id="email"
+                className="input"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                style={{ width: '100%', padding: 8, marginTop: 4 }}
               />
-            </label>
-            <label>
-              Số điện thoại (10 số, bắt đầu bằng 0)
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="0912345678"
-                required
-                style={{ width: '100%', padding: 8, marginTop: 4 }}
-              />
-            </label>
-          </>
-        )}
+            </div>
 
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: '100%', padding: 8, marginTop: 4 }}
-          />
-        </label>
+            <div className="field">
+              <label htmlFor="password">
+                Mật khẩu<small>tối thiểu 8 ký tự</small>
+              </label>
+              <div className="input-wrap">
+                <input
+                  id="password"
+                  className="input"
+                  type={showPw ? 'text' : 'password'}
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="input-toggle"
+                  aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  onClick={() => setShowPw((v) => !v)}
+                >
+                  <EyeIcon off={showPw} />
+                </button>
+              </div>
+            </div>
 
-        <label>
-          Mật khẩu (tối thiểu 8 ký tự)
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: '100%', padding: 8, marginTop: 4 }}
-          />
-        </label>
+            {error && (
+              <p className="alert alert-error" role="alert">
+                {error}
+              </p>
+            )}
 
-        {error && <p style={{ color: 'crimson', margin: 0 }}>{error}</p>}
-
-        <button type="submit" disabled={loading} style={{ padding: 10 }}>
-          {loading ? 'Đang xử lý...' : mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
-        </button>
-      </form>
+            <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+              {loading ? 'Đang xử lý…' : isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}
+            </button>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }

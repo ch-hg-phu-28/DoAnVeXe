@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { authApi, TOKEN_STORAGE_KEY } from './api/auth';
+import { Avatar, LogoMark } from './components/ui';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AuthPage } from './pages/AuthPage';
 import { ProfilePage } from './pages/ProfilePage';
-import type { UserProfile } from './types/user';
+import { ROLE_LABEL, type UserProfile } from './types/user';
 
 type Tab = 'profile' | 'admin';
 
@@ -36,7 +37,7 @@ export function App() {
   }
 
   if (booting) {
-    return <div style={{ padding: 24 }}>Đang kiểm tra phiên đăng nhập...</div>;
+    return <div className="boot">Đang kiểm tra phiên đăng nhập…</div>;
   }
 
   if (!user) {
@@ -51,54 +52,54 @@ export function App() {
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: '24px auto', padding: '0 16px' }}>
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingBottom: 12,
-          marginBottom: 20,
-          borderBottom: '1px solid #ddd',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            style={{ padding: '8px 14px', fontWeight: activeTab === 'profile' ? 'bold' : 'normal' }}
-          >
-            Hồ sơ & Đổi mật khẩu (F03)
-          </button>
-          {user.role === 'ADMIN' && (
+    <>
+      <header className="topbar">
+        <div className="topbar-in">
+          <div className="brand">
+            <LogoMark />
+            Đặt vé xe
+          </div>
+
+          <nav className="nav" aria-label="Điều hướng chính">
             <button
               type="button"
-              onClick={() => setActiveTab('admin')}
-              style={{ padding: '8px 14px', fontWeight: activeTab === 'admin' ? 'bold' : 'normal' }}
+              aria-current={activeTab === 'profile' ? 'page' : undefined}
+              onClick={() => setActiveTab('profile')}
             >
-              Quản lý người dùng (F29)
+              Hồ sơ <small>F03</small>
             </button>
-          )}
-        </div>
+            {user.role === 'ADMIN' && (
+              <button
+                type="button"
+                aria-current={activeTab === 'admin' ? 'page' : undefined}
+                onClick={() => setActiveTab('admin')}
+              >
+                Người dùng <small>F29</small>
+              </button>
+            )}
+          </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span>
-            <strong>{user.fullName}</strong> ({user.role})
-          </span>
-          <button type="button" onClick={handleLogout} style={{ padding: '6px 12px' }}>
-            Đăng xuất
-          </button>
+          <div className="me">
+            <Avatar name={user.fullName} />
+            <div className="me-text">
+              <div className="me-name">{user.fullName}</div>
+              <div className="me-role">{ROLE_LABEL[user.role]}</div>
+            </div>
+            <button type="button" className="btn btn-sm btn-onbrand" onClick={handleLogout}>
+              Đăng xuất
+            </button>
+          </div>
         </div>
       </header>
 
-      {activeTab === 'profile' ? (
-        <ProfilePage user={user} onUserUpdated={setUser} />
-      ) : (
-        user.role === 'ADMIN' && <AdminUsersPage currentUserId={user.id} />
-      )}
-    </div>
+      <main className="page">
+        {activeTab === 'profile' ? (
+          <ProfilePage user={user} onUserUpdated={setUser} />
+        ) : (
+          user.role === 'ADMIN' && <AdminUsersPage currentUserId={user.id} />
+        )}
+      </main>
+    </>
   );
 }
 

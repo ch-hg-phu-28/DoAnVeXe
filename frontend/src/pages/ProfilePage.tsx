@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { authApi } from '../api/auth';
-import type { UserProfile } from '../types/user';
+import { Avatar } from '../components/ui';
+import { ROLE_LABEL, type UserProfile } from '../types/user';
 
 interface ProfilePageProps {
   user: UserProfile;
@@ -59,75 +60,120 @@ export function ProfilePage({ user, onUserUpdated }: ProfilePageProps) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 24, maxWidth: 600 }}>
-      <section style={{ padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
-        <h3>Thông tin tài khoản (F03)</h3>
-        <p><strong>Email:</strong> {user.email} (không thể thay đổi)</p>
-        <p><strong>Vai trò:</strong> {user.role}</p>
+    <>
+      <div className="page-head">
+        <h1>Hồ sơ của bạn</h1>
+        <p>Cập nhật thông tin liên hệ và mật khẩu đăng nhập.</p>
+      </div>
 
-        <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label>
-            Họ tên
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              style={{ width: '100%', padding: 8, marginTop: 4 }}
-            />
-          </label>
-          <label>
-            Số điện thoại
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              style={{ width: '100%', padding: 8, marginTop: 4 }}
-            />
-          </label>
+      <div className="panel split">
+        <section>
+          <div className="profile-id">
+            <Avatar name={user.fullName} size="lg" />
+            <div>
+              <div className="profile-name">{user.fullName}</div>
+              <div className="muted">{user.email}</div>
+              <span className="badge">{ROLE_LABEL[user.role]}</span>
+            </div>
+          </div>
 
-          {profileErr && <p style={{ color: 'crimson', margin: 0 }}>{profileErr}</p>}
-          {profileMsg && <p style={{ color: 'seagreen', margin: 0 }}>{profileMsg}</p>}
+          <h2 className="section-title">Thông tin liên hệ</h2>
+          <p className="section-sub">Email dùng để đăng nhập nên không thể thay đổi.</p>
 
-          <button type="submit" disabled={savingProfile} style={{ padding: 10 }}>
-            {savingProfile ? 'Đang lưu...' : 'Lưu thay đổi hồ sơ'}
-          </button>
-        </form>
-      </section>
+          <form className="form" onSubmit={handleUpdateProfile}>
+            <div className="field">
+              <label htmlFor="pf-name">Họ tên</label>
+              <input
+                id="pf-name"
+                className="input"
+                type="text"
+                autoComplete="name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="pf-phone">
+                Số điện thoại<small>10 số, bắt đầu bằng 0</small>
+              </label>
+              <input
+                id="pf-phone"
+                className="input"
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </div>
 
-      <section style={{ padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
-        <h3>Đổi mật khẩu</h3>
-        <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label>
-            Mật khẩu hiện tại
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              style={{ width: '100%', padding: 8, marginTop: 4 }}
-            />
-          </label>
-          <label>
-            Mật khẩu mới (tối thiểu 8 ký tự)
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              style={{ width: '100%', padding: 8, marginTop: 4 }}
-            />
-          </label>
+            {profileErr && (
+              <p className="alert alert-error" role="alert">
+                {profileErr}
+              </p>
+            )}
+            {profileMsg && (
+              <p className="alert alert-ok" role="status">
+                {profileMsg}
+              </p>
+            )}
 
-          {pwErr && <p style={{ color: 'crimson', margin: 0 }}>{pwErr}</p>}
-          {pwMsg && <p style={{ color: 'seagreen', margin: 0 }}>{pwMsg}</p>}
+            <button type="submit" className="btn btn-primary" disabled={savingProfile}>
+              {savingProfile ? 'Đang lưu…' : 'Lưu thay đổi'}
+            </button>
+          </form>
+        </section>
 
-          <button type="submit" disabled={savingPw} style={{ padding: 10 }}>
-            {savingPw ? 'Đang đổi...' : 'Đổi mật khẩu'}
-          </button>
-        </form>
-      </section>
-    </div>
+        <section>
+          <h2 className="section-title">Đổi mật khẩu</h2>
+          <p className="section-sub">Nhập mật khẩu hiện tại để xác nhận trước khi đặt mật khẩu mới.</p>
+
+          <form className="form" onSubmit={handleChangePassword}>
+            <div className="field">
+              <label htmlFor="pw-current">Mật khẩu hiện tại</label>
+              <input
+                id="pw-current"
+                className="input"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="pw-new">
+                Mật khẩu mới<small>tối thiểu 8 ký tự</small>
+              </label>
+              <input
+                id="pw-new"
+                className="input"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            {pwErr && (
+              <p className="alert alert-error" role="alert">
+                {pwErr}
+              </p>
+            )}
+            {pwMsg && (
+              <p className="alert alert-ok" role="status">
+                {pwMsg}
+              </p>
+            )}
+
+            <button type="submit" className="btn btn-primary" disabled={savingPw}>
+              {savingPw ? 'Đang đổi…' : 'Đổi mật khẩu'}
+            </button>
+          </form>
+        </section>
+      </div>
+    </>
   );
 }

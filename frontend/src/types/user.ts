@@ -1,5 +1,11 @@
 export type Role = 'CUSTOMER' | 'STAFF' | 'ADMIN';
 
+export const ROLE_LABEL: Record<Role, string> = {
+  CUSTOMER: 'Khách hàng',
+  STAFF: 'Nhân viên',
+  ADMIN: 'Quản trị viên',
+};
+
 export interface UserProfile {
   id: number;
   fullName: string;

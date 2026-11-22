@@ -14,6 +14,9 @@ npm install
 npx prisma migrate dev
 npm run db:seed
 npm run start:dev
+cd frontend (Kiểm tra đã cài đạt nodejs chưa)
+npm install
+npm run dev
 ```
 
 Nếu máy chưa có Docker Compose (`docker compose` báo "unknown command"), thay dòng đầu bằng 2 lệnh:

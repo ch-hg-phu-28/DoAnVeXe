@@ -4,9 +4,9 @@ import { Prisma, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { AppException, ErrorCode, notFound } from '../common/errors';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { ChangePasswordDto, LoginDto, RegisterDto, UpdateProfileDto } from './dto/auth.dto';
 
-// TODO (TV3): quên mật khẩu, refresh token, đổi mật khẩu, khóa tạm khi đăng nhập sai nhiều lần.
+// TODO: quên mật khẩu (ngày 4), refresh token, khóa tạm khi đăng nhập sai nhiều lần.
 @Injectable()
 export class AuthService {
   constructor(
@@ -34,6 +34,9 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new AppException(ErrorCode.INVALID_CREDENTIALS, 'Email hoặc mật khẩu không đúng', HttpStatus.UNAUTHORIZED);
     }
+    if (user.isLocked) {
+      throw new AppException(ErrorCode.ACCOUNT_LOCKED, 'Tài khoản đã bị khóa. Vui lòng liên hệ hỗ trợ.', HttpStatus.FORBIDDEN);
+    }
     return this.issueToken(user);
   }
 
@@ -41,6 +44,23 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw notFound('tài khoản');
     return this.toPublic(user);
+  }
+
+  // ---------- F03 hồ sơ, đổi mật khẩu ----------
+
+  async updateProfile(userId: number, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.update({ where: { id: userId }, data: dto });
+    return this.toPublic(user);
+  }
+
+  async changePassword(userId: number, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw notFound('tài khoản');
+    if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
+      throw new AppException(ErrorCode.WRONG_PASSWORD, 'Mật khẩu hiện tại không đúng');
+    }
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, 10) } });
+    return { message: 'Đã đổi mật khẩu' };
   }
 
   private async issueToken(user: User) {

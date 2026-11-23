@@ -47,6 +47,15 @@ export class MailService {
   }
 }
 
+/** Khung HTML chung cho email gửi khách (tiêu đề + nội dung + chân trang). */
+export function mailLayout(title: string, body: string): string {
+  return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;border:1px solid #dfe6e4;border-radius:10px;overflow:hidden">
+<div style="background:#0b7a5e;color:#fff;padding:14px 18px;font-size:18px;font-weight:bold">Đặt vé xe · ${title}</div>
+<div style="padding:18px;color:#1c2a28;font-size:14px;line-height:1.6">${body}</div>
+<div style="padding:10px 18px;background:#f3f5f4;color:#5f6f6c;font-size:12px">Email tự động từ đồ án Website đặt vé xe khách.</div>
+</div>`;
+}
+
 @Global()
 @Module({ providers: [MailService], exports: [MailService] })
 export class MailModule {}

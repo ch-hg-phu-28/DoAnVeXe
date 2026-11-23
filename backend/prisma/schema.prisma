@@ -17,6 +17,13 @@ enum Role {
   ADMIN
 }
 
+/// F04: giới tính hành khách (dùng cho hành khách thường đi)
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 enum StopType {
   PICKUP
   DROPOFF
@@ -63,10 +70,40 @@ model User {
   isLocked     Boolean       @default(false) @map("is_locked")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
-  bookings     Booking[]
-  chatSessions ChatSession[]
+  bookings        Booking[]
+  chatSessions    ChatSession[]
+  savedPassengers SavedPassenger[]
+  passwordResets  PasswordReset[]
 
   @@map("users")
+}
+
+/// F04: hành khách thường đi của một tài khoản (tối đa 10 người)
+model SavedPassenger {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  fullName  String   @map("full_name")
+  phone     String?
+  gender    Gender?
+  age       Int?
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_passengers")
+}
+
+/// F02: mã đặt lại mật khẩu, có hạn và chỉ dùng 1 lần
+model PasswordReset {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tokenHash String    @unique @map("token_hash") // chỉ lưu bản băm, không lưu mã gốc
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
 }
 
 // Để sẵn bảng nhà xe để sau này mở rộng thành sàn nhiều nhà xe.

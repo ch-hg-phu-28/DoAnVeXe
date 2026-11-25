@@ -3,15 +3,21 @@ import { authApi, TOKEN_STORAGE_KEY } from './api/auth';
 import { Avatar, LogoMark } from './components/ui';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AuthPage } from './pages/AuthPage';
+import { PassengersPage } from './pages/PassengersPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ROLE_LABEL, type UserProfile } from './types/user';
 
-type Tab = 'profile' | 'admin';
+type Tab = 'profile' | 'passengers' | 'admin';
+
+/** Đường dẫn trong email quên mật khẩu (F02) */
+const RESET_PATH = '/dat-lai-mat-khau';
 
 export function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [booting, setBooting] = useState(true);
+  const [resetting, setResetting] = useState(() => window.location.pathname === RESET_PATH);
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -34,6 +40,17 @@ export function App() {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setUser(null);
     setActiveTab('profile');
+  }
+
+  if (resetting) {
+    return (
+      <ResetPasswordPage
+        onDone={() => {
+          window.history.replaceState(null, '', '/');
+          setResetting(false);
+        }}
+      />
+    );
   }
 
   if (booting) {
@@ -68,6 +85,13 @@ export function App() {
             >
               Hồ sơ <small>F03</small>
             </button>
+            <button
+              type="button"
+              aria-current={activeTab === 'passengers' ? 'page' : undefined}
+              onClick={() => setActiveTab('passengers')}
+            >
+              Hành khách thường đi <small>F04</small>
+            </button>
             {user.role === 'ADMIN' && (
               <button
                 type="button"
@@ -95,6 +119,8 @@ export function App() {
       <main className="page">
         {activeTab === 'profile' ? (
           <ProfilePage user={user} onUserUpdated={setUser} />
+        ) : activeTab === 'passengers' ? (
+          <PassengersPage />
         ) : (
           user.role === 'ADMIN' && <AdminUsersPage currentUserId={user.id} />
         )}

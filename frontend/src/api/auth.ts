@@ -5,6 +5,9 @@ import type {
   LoginPayload,
   MessageResponse,
   RegisterPayload,
+  ResetPasswordPayload,
+  SavedPassenger,
+  SavedPassengerPayload,
   UpdateProfilePayload,
   UserProfile,
 } from '../types/user';
@@ -44,5 +47,44 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  /** F02: gửi email có đường dẫn đặt lại mật khẩu */
+  forgotPassword(email: string) {
+    return apiRequest<MessageResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /** F02: đặt mật khẩu mới bằng mã trong email */
+  resetPassword(payload: ResetPasswordPayload) {
+    return apiRequest<MessageResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** F04: hành khách thường đi */
+  listPassengers() {
+    return apiRequest<SavedPassenger[]>('/auth/me/passengers', { method: 'GET' });
+  },
+
+  addPassenger(payload: SavedPassengerPayload) {
+    return apiRequest<SavedPassenger>('/auth/me/passengers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updatePassenger(id: number, payload: SavedPassengerPayload) {
+    return apiRequest<SavedPassenger>(`/auth/me/passengers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  removePassenger(id: number) {
+    return apiRequest<{ id: number }>(`/auth/me/passengers/${id}`, { method: 'DELETE' });
   },
 };

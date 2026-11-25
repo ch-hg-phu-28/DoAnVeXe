@@ -8,7 +8,8 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ onSuccess }: AuthPageProps) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [info, setInfo] = useState<string | null>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('khach@example.com');
   const [phone, setPhone] = useState('');
@@ -20,9 +21,16 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     setLoading(true);
 
     try {
+      if (mode === 'forgot') {
+        // F02: luôn nhận cùng một thông báo, không lộ email nào đã đăng ký
+        const r = await authApi.forgotPassword(email);
+        setInfo(r.message);
+        return;
+      }
       const res =
         mode === 'login'
           ? await authApi.login({ email, password })
@@ -45,6 +53,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
   }
 
   const isLogin = mode === 'login';
+  const isForgot = mode === 'forgot';
 
   return (
     <div className="auth">
@@ -91,12 +100,17 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
       <main className="auth-main">
         <div className="auth-card">
           <div>
-            <h2>{isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}</h2>
+            <h2>{isForgot ? 'Quên mật khẩu' : isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}</h2>
             <p className="sub">
-              {isLogin ? 'Đăng nhập để xem và quản lý vé của bạn.' : 'Chỉ mất một phút để bắt đầu đặt vé.'}
+              {isForgot
+                ? 'Nhập email đã đăng ký, chúng tôi sẽ gửi đường dẫn đặt lại mật khẩu (dùng 1 lần, hạn 30 phút).'
+                : isLogin
+                  ? 'Đăng nhập để xem và quản lý vé của bạn.'
+                  : 'Chỉ mất một phút để bắt đầu đặt vé.'}
             </p>
           </div>
 
+          {!isForgot && (
           <div className="seg" role="tablist" aria-label="Chế độ">
             <button
               type="button"
@@ -121,6 +135,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
               Đăng ký
             </button>
           </div>
+          )}
 
           {isLogin && (
             <div className="chips">
@@ -135,7 +150,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
           )}
 
           <form className="form" onSubmit={handleSubmit}>
-            {!isLogin && (
+            {mode === 'register' && (
               <>
                 <div className="field">
                   <label htmlFor="fullName">
@@ -182,6 +197,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
               />
             </div>
 
+            {!isForgot && (
             <div className="field">
               <label htmlFor="password">
                 Mật khẩu<small>tối thiểu 8 ký tự</small>
@@ -206,6 +222,13 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 </button>
               </div>
             </div>
+            )}
+
+            {isLogin && (
+              <button type="button" className="link-btn" onClick={() => { setMode('forgot'); setError(null); setInfo(null); }}>
+                Quên mật khẩu?
+              </button>
+            )}
 
             {error && (
               <p className="alert alert-error" role="alert">
@@ -213,9 +236,21 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
               </p>
             )}
 
+            {info && (
+              <p className="alert alert-ok" role="status">
+                {info}
+              </p>
+            )}
+
             <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-              {loading ? 'Đang xử lý…' : isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}
+              {loading ? 'Đang xử lý…' : isForgot ? 'Gửi đường dẫn đặt lại' : isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}
             </button>
+
+            {isForgot && (
+              <button type="button" className="link-btn" onClick={() => { setMode('login'); setError(null); setInfo(null); }}>
+                ← Quay lại đăng nhập
+              </button>
+            )}
           </form>
         </div>
       </main>

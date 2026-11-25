@@ -66,3 +66,33 @@ export interface AdminUpdateUserResult {
 export interface MessageResponse {
   message: string;
 }
+/** F02: đặt lại mật khẩu bằng mã trong email */
+export interface ResetPasswordPayload {
+  token: string;
+  password: string;
+}
+
+/** F04: hành khách thường đi */
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+
+export const GENDER_LABEL: Record<Gender, string> = {
+  MALE: 'Nam',
+  FEMALE: 'Nữ',
+  OTHER: 'Khác',
+};
+
+export interface SavedPassenger {
+  id: number;
+  fullName: string;
+  phone: string | null;
+  gender: Gender | null;
+  age: number | null;
+  createdAt: string;
+}
+
+export interface SavedPassengerPayload {
+  fullName: string;
+  phone?: string;
+  gender?: Gender;
+  age?: number;
+}

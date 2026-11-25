@@ -17,6 +17,20 @@ enum Role {
   ADMIN
 }
 
+/// F34: loại yêu cầu hỗ trợ
+enum SupportType {
+  QUESTION
+  COMPLAINT
+  HANDOFF // chatbot chuyển cho nhân viên (F22, làm sau)
+}
+
+/// F34: trạng thái xử lý yêu cầu hỗ trợ
+enum SupportStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
 enum StopType {
   PICKUP
   DROPOFF
@@ -53,18 +67,20 @@ enum PaymentStatus {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  fullName     String        @map("full_name")
-  email        String        @unique
-  phone        String
-  passwordHash String        @map("password_hash")
-  role         Role          @default(CUSTOMER)
+  id               Int              @id @default(autoincrement())
+  fullName         String           @map("full_name")
+  email            String           @unique
+  phone            String
+  passwordHash     String           @map("password_hash")
+  role             Role             @default(CUSTOMER)
   /// F29: quản trị viên khóa tài khoản, tài khoản bị khóa không đăng nhập được
-  isLocked     Boolean       @default(false) @map("is_locked")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  bookings     Booking[]
-  chatSessions ChatSession[]
+  isLocked         Boolean          @default(false) @map("is_locked")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  bookings         Booking[]
+  chatSessions     ChatSession[]
+  supportRequests  SupportRequest[] @relation("SupportUser")
+  supportRepliedBy SupportRequest[] @relation("SupportRepliedBy")
 
   @@map("users")
 }
@@ -281,4 +297,26 @@ model ChatMessage {
 
   @@index([sessionId])
   @@map("chat_messages")
+}
+
+/// F34: yêu cầu hỗ trợ / khiếu nại (kèm mã vé nếu có), nhân viên hoặc quản trị trả lời
+model SupportRequest {
+  id            Int           @id @default(autoincrement())
+  userId        Int?          @map("user_id")
+  type          SupportType   @default(QUESTION)
+  bookingCode   String?       @map("booking_code")
+  contactPhone  String?       @map("contact_phone")
+  subject       String
+  message       String        @db.Text
+  status        SupportStatus @default(OPEN)
+  reply         String?       @db.Text
+  repliedAt     DateTime?     @map("replied_at")
+  repliedById   Int?          @map("replied_by_id")
+  chatSessionId String?       @map("chat_session_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  user          User?         @relation("SupportUser", fields: [userId], references: [id])
+  repliedBy     User?         @relation("SupportRepliedBy", fields: [repliedById], references: [id])
+
+  @@index([status])
+  @@map("support_requests")
 }

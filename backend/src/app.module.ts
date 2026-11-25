@@ -15,6 +15,7 @@ import { MailModule } from './mail/mail.service';
 import { PaymentModule } from './payment/payment.module';
 import { PrismaModule, PrismaService } from './prisma/prisma.service';
 import { RedisModule, RedisService } from './redis/redis.service';
+import { SupportModule } from './support/support.module';
 
 @Controller('health')
 class HealthController {
@@ -50,6 +51,7 @@ class HealthController {
     ChatbotToolsModule,
     MailModule,
     AdminModule,
+    SupportModule,
   ],
   controllers: [HealthController],
   providers: [
